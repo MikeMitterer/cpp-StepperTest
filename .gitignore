@@ -1,0 +1,7 @@
+.pioenvs
+.piolibdeps
+CMakeListsPrivate.txt
+.pio
+cmake-build-debug/
+cmake-build-uno/
+lib/
