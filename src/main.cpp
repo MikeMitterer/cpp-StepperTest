@@ -63,12 +63,16 @@ const uint8_t SCREEN_HEIGHT = 64; // OLED display height, in pixels
 const uint8_t OLED_RESET  = -1; // Reset pin # (or -1 if sharing Arduino reset pin)
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
+void clearLine(uint8_t line);
+
 /// Hauptstatus
 /// Per default fährt die Türe hoch und initialisiert sich.
 States currentState = States::MotorOff;
 
+// Poti + Filter (Exponential Moving Average algorithm)
+//      Mehr: https://www.norwegiancreations.com/2015/10/tutorial-potentiometers-with-arduino-and-filtering/
+int EMA_S = 0;          //initialization of EMA S
 int32_t readPotti();
-void clearLine(uint8_t line);
 
 // the setup function runs once when you press reset or power the board
 void setup() {
@@ -89,7 +93,9 @@ void setup() {
 
     // Basic Stepper settings
     // Set the speed of the motor to x RPMs
+    pinMode(POTI_PIN, INPUT);
     stepper.setMaxSpeed(1000);
+    EMA_S = analogRead(POTI_PIN);  //set EMA S for t=1
     // stepper.setSpeed(1000);
 
     // OLED
@@ -108,7 +114,7 @@ void setup() {
     // Display static text
     display.print("Stepper Test, 1.0");
     display.display();
-    
+
     oldMillis = millis();
 }
 
@@ -188,16 +194,14 @@ void loop() {
  * @return Wert zwischen -49 und +49
  */
 int32_t readPotti() {
+    const float EMA_a = 0.6;      //initialization of EMA alpha
     const int maxReads = 1;
     
     // read the input pin (max 1024)
-    double val = 0;
-    for(int counter = 0; counter < maxReads; counter++) {
-        val += analogRead(POTI_PIN);
-        delay(1);
-    }
+    int val = analogRead(POTI_PIN);
+    EMA_S = (EMA_a * val) + ((1 - EMA_a) * EMA_S);
 
-    val = val / maxReads;
+    val = EMA_S;
 
     if(val >= 512) {
         val = (val - 512) / 10;
